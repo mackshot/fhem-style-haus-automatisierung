@@ -1,12 +1,12 @@
 FHEM haus-automatisierung.com-mackshot custom theme last changes:
-2020-05-02
-- Linkcolor in MOTD angepasst
-- Update README.md
-- Update _content.scss
-- Initial Setup der Beta
-- Merge remote-tracking branch 'origin/patch-2' into version-2beta
-- Merge remote-tracking branch 'origin/patch-3' into version-2beta
-- Merge remote-tracking branch 'origin/patch-4' into version-2beta
-- Merge remote-tracking branch 'origin/patch-5' into version-2beta
-- Merge remote-tracking branch 'origin/patch-7' into version-2beta
-- Version 2.16b1
+2020-05-08
+- Merge pull request #126 from mackshot/patch-3
+- Merge pull request #127 from mackshot/patch-4
+- Merge pull request #129 from mackshot/patch-5
+- Neue CSS-Dateien nach Pull-Requests
+- Neue Version
+- 2.16
+- Merge tag '2.16' into version-2beta
+- Bugfix klein0r/Issue130
+- Merge branch 'klein0r/Issue130' into version-2beta
+- 2.17b1
