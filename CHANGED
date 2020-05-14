@@ -1,12 +1,12 @@
 FHEM haus-automatisierung.com-mackshot custom theme last changes:
 2020-05-14
-- Neue CSS-Dateien nach Pull-Requests
-- Neue Version
-- 2.16
-- Merge tag '2.16' into version-2beta
-- Bugfix klein0r/Issue130
 - Merge branch 'klein0r/Issue130' into version-2beta
 - 2.17b1
 - Bugfix klein0r/Issue135
 - Merge branch 'klein0r/Issue135' into version-2beta
 - 2.17b2
+- Update README.md
+- Update README.md
+- Bugfix klein0r/Issue135 #2
+- Merge branch 'klein0r/Issue135' into version-2beta
+- 2.17b3
