@@ -9,7 +9,7 @@ Diese Variante des original Styles https://github.com/klein0r/fhem-style-haus-au
 1. Hinzufügen des neuen Themes in Version 2
 
 ```
-update add https://raw.githubusercontent.com/klein0r/fhem-style-haus-automatisierung/version-2/controls_ha_theme_mackshot.txt
+update add https://raw.githubusercontent.com/mackshot/fhem-style-haus-automatisierung/version-2/controls_ha_theme_mackshot.txt
 update check ha_theme_mackshot
 update all ha_theme_mackshot
 ```
