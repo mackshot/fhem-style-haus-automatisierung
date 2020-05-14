@@ -1077,6 +1077,10 @@ textarea#console {
   width: 100%;
 }
 
+#dashboard .dashboard_row .dashboard_content .col1 a {
+  white-space: nowrap;
+}
+
 #dashboard .dashboard_tabcontent {
   margin: 0;
   padding: 0;

@@ -80,6 +80,10 @@
         height: inherit;
         padding: 0;
         width: 100%;
+
+        .dashboard_content .col1 a {
+            white-space: nowrap;
+        }
     }
 
     .dashboard_tabcontent {
