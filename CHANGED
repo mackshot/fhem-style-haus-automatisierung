@@ -1,6 +1,5 @@
 FHEM haus-automatisierung.com-mackshot custom theme last changes:
-2020-05-14
-- Merge branch 'klein0r/Issue130' into version-2beta
+2020-05-16
 - 2.17b1
 - Bugfix klein0r/Issue135
 - Merge branch 'klein0r/Issue135' into version-2beta
@@ -10,3 +9,4 @@ FHEM haus-automatisierung.com-mackshot custom theme last changes:
 - Bugfix klein0r/Issue135 #2
 - Merge branch 'klein0r/Issue135' into version-2beta
 - 2.17b3
+- Version 3 Sass & LocalStorage

@@ -1,25 +1,8 @@
-
-function getClock() {
-    var d = new Date();
-    nhour = d.getHours();
-    nmin = d.getMinutes();
-
-    if (nhour <= 9) {
-        nhour = '0' + nhour;
-    }
-
-    if (nmin <= 9) {
-        nmin = '0' + nmin;
-    }
-
-    document.getElementById('clock').innerHTML = nhour + ':' + nmin + ' Uhr';
-
-    setTimeout(getClock, 1000);
-}
-
 jQuery(document).ready(function ($) {
+    HAM_loadCustomCss();
+    HAM_editCustomCss();
 
-    var themeVersion = '2.17b3';
+    var themeVersion = '3.0b1';
 
     // attr WEB hiddenroom input -> Ansicht anpassen
     if ($('#hdr .maininput').length == 0) {
@@ -64,7 +47,7 @@ jQuery(document).ready(function ($) {
 
     // Add clock
     $('#logo').append($('<span id="clock"></span>'));
-    window.addEventListener('load', getClock, false);
+    window.addEventListener('load', HA_getClock, false);
 
 	// Clear spaces
     $('#content .devType, #menu .room a').each(function() {
@@ -303,3 +286,172 @@ jQuery(document).ready(function ($) {
 
     })(jQuery, window, document);
 });
+
+function HA_getClock() {
+    var d = new Date();
+    nhour = d.getHours();
+    nmin = d.getMinutes();
+
+    if (nhour <= 9) {
+        nhour = '0' + nhour;
+    }
+
+    if (nmin <= 9) {
+        nmin = '0' + nmin;
+    }
+
+    document.getElementById('clock').innerHTML = nhour + ':' + nmin + ' Uhr';
+
+    setTimeout(HA_getClock, 1000);
+}
+
+var HAM_Web = $("body").attr("data-webname");
+var HAM_cssId = 'HAM_css_custom';
+var HAM_sassLoaded = false;
+var HAM_lsKey = 'hausautomatisierung_com-mackshot.custom.css';
+var HAM_customRulesReading = "HAM_customRules";
+function HAM_updateSass() {
+    var compile = function() {
+        HAM_loadCustomRules(function (rules) {
+            var sass = new Sass();
+            var scss = HAM_transformCustomRulesToSCss(rules);
+            sass.compile(scss, function(result) {
+                console.log(result);
+               var cssElement = document.getElementById(HAM_cssId);
+                if (cssElement != null) {
+                    if (result.text === undefined) {
+                        cssElement.innerText = '';    
+                        localStorage.setItem(HAM_lsKey, '');
+                    } else {
+                        cssElement.innerText = result.text;
+                        localStorage.setItem(HAM_lsKey, result.text);
+                    }
+                }
+            });
+        });
+    }
+
+    if (!HAM_sassLoaded) {
+        var onLoad = function() {
+            Sass.setWorkerUrl(FW_root + '/pgm2/hausautomatisierung_com-mackshot.sass.worker.js');
+            compile();
+        };
+
+        var scriptTag = document.createElement('script');
+        scriptTag.src = FW_root + '/pgm2/hausautomatisierung_com-mackshot.sass.js';
+        scriptTag.onload = onLoad;
+        scriptTag.onreadystatechange = onLoad;
+    
+        document.body.appendChild(scriptTag);
+    } else {
+        compile();
+    }
+}
+
+function HAM_editCustomCss() {
+    if ($("div.fileList.styles").length >= 1) {
+        var block = $("div.fileList.styles").closest("td");
+        block.append('<div class="fileList">Edit Style</div>');
+        block.append('<table class="editStyle block list wide"><tbody></tbody></table>');
+
+        HAM_loadCustomRules(function(customRules) {
+            var table = $("table.editStyle>tbody");
+            var cc = 0;
+            for (var i in customRules) {
+                var c = HAM_customRulesObj[i];
+                var customRule = customRules[i];
+                var rowClass = (cc++ % 2 == 0 ? "even" : "odd");
+                if (c.type == 'colorPicker') {
+                    table.append('<tr item="' + i + '" class="' + i.replace(".", "__") + ' ' + rowClass + '"><td><div>' + i + '</div></td><td><input class="val" type="color" value="' + customRule.val + '" style="width: 100px;" ' + (customRule.val == null ? 'disabled="disabled"' : '') + '></td><td><input type="checkbox" value="1" ' + (customRule.val == null ? 'checked="checked"' : '') + '>Standard</td></tr>');
+                }
+            }
+        });
+
+        block.on('change', 'table.editStyle>tbody input', function() { HAM_setCustomCss($(this).closest("tr").attr("item")); });
+    }
+}
+
+function HAM_setCustomCss(key) {
+    if ($("table.editStyle tr." + key.replace(".", "__") + " input[type=checkbox]:checked").length == 1) {
+        $("table.editStyle tr." + key.replace(".", "__") + " input[type!=checkbox]").prop('disabled', true);
+        HAM_loadCustomRules(function(customRules) {
+            customRules[key].val = null;
+            HAM_saveCustomRules(customRules);
+            HAM_updateSass();
+        });
+    } else {
+        $("table.editStyle tr." + key.replace(".", "__") + " input[type!=checkbox]").prop('disabled', false);
+        var val = $("table.editStyle tr." + key.replace(".", "__") + " input.val").val();
+        HAM_loadCustomRules(function(customRules) {
+            customRules[key].val = val;
+            HAM_saveCustomRules(customRules);
+            HAM_updateSass();
+        });
+    }
+}
+
+function HAM_loadCustomCss() {
+    var exists = document.getElementById(HAM_cssId);
+    if (exists != null) {
+        document.removeChild(exists);
+    }
+    var cssContent = localStorage.getItem(HAM_lsKey);
+    var cssTag = document.createElement("style");
+    cssTag.id = HAM_cssId;
+    if (cssContent != null) {
+        cssTag.innerText = cssContent;
+    } else {
+        HAM_updateSass();
+    }
+    document.body.appendChild(cssTag);
+}
+
+function HAM_loadCustomRules(action) {
+    FW_cmd(FW_root + '?cmd=jsonlist2 ' + $("body").attr("data-webname") + " " + HAM_customRulesReading + "&XHR=1", function(a) {
+        var j = JSON.parse(a);
+        var readings = j.Results[0].Readings;
+
+        var customRules = {};
+        if (readings[HAM_customRulesReading] != undefined) {
+            customRules = JSON.parse(atob(readings[HAM_customRulesReading].Value));
+        } else {
+            for (var i in HAM_customRulesObj) {
+                customRules[i] = { val: null };
+            }
+
+            HAM_saveCustomRules(customRules);
+        }
+        action(customRules);
+    })
+}
+
+function HAM_saveCustomRules(obj) {
+    FW_cmd(FW_root + '?cmd=setreading ' + $("body").attr("data-webname") + " " + HAM_customRulesReading + " " + btoa(JSON.stringify(obj)) + "&XHR=1", function(a) {
+        console.log(a);
+    })
+}
+
+function HAM_transformCustomRulesToSCss(obj) {
+    var string = '';
+    for (var i in obj) {
+        if (obj[i].val != null) {
+            for (var j in HAM_customRulesObj[i].pattern) {
+                var p = HAM_customRulesObj[i].pattern[j].split("|");
+                string += "\n" + p[0] + " { " + p[1] + ": " + obj[i].val + " !important; }";
+            }
+        }
+    }
+    return string;
+}
+
+var HAM_customRulesObj = {
+    'SVGplot.l0': { type: 'colorPicker', pattern: ['.SVGplot.l0|stroke', '.SVGplot.l0fill|stroke', '.SVGplot.l0dot|stroke', '.SVGplot.l0fill_stripe|stroke', '.SVGplot.l0fill_gyr|stroke', 'text.SVGplot.l0|fill', 'text.SVGplot.l0fill|fill', 'text.SVGplot.l0dot|fill', 'text.SVGplot.l0fill_stripe|fill', 'text.SVGplot.l0fill_gyr|fill'], val: null },
+    'SVGplot.l1': { type: 'colorPicker', pattern: ['.SVGplot.l1|stroke', '.SVGplot.l1fill|stroke', '.SVGplot.l1dot|stroke', '.SVGplot.l1fill_stripe|stroke', 'text.SVGplot.l1|fill', 'text.SVGplot.l1fill|fill', 'text.SVGplot.l1dot|fill', 'text.SVGplot.l1fill_stripe|fill'], val: null },
+    'SVGplot.l2': { type: 'colorPicker', pattern: ['.SVGplot.l2|stroke', '.SVGplot.l2fill|stroke', '.SVGplot.l2dot|stroke', 'text.SVGplot.l2|fill', 'text.SVGplot.l2fill|fill', 'text.SVGplot.l2dot|fill'], val: null },
+    'SVGplot.l3': { type: 'colorPicker', pattern: ['.SVGplot.l3|stroke', '.SVGplot.l3fill|stroke', '.SVGplot.l3dot|stroke', 'text.SVGplot.l3|fill', 'text.SVGplot.l3fill|fill', 'text.SVGplot.l3dot|fill'], val: null },
+    'SVGplot.l4': { type: 'colorPicker', pattern: ['.SVGplot.l4|stroke', '.SVGplot.l4fill|stroke', '.SVGplot.l4dot|stroke', 'text.SVGplot.l4|fill', 'text.SVGplot.l4fill|fill', 'text.SVGplot.l4dot|fill'], val: null },
+    'SVGplot.l5': { type: 'colorPicker', pattern: ['.SVGplot.l5|stroke', '.SVGplot.l5fill|stroke', '.SVGplot.l5dot|stroke', 'text.SVGplot.l5|fill', 'text.SVGplot.l5fill|fill', 'text.SVGplot.l5dot|fill'], val: null },
+    'SVGplot.l6': { type: 'colorPicker', pattern: ['.SVGplot.l6|stroke', '.SVGplot.l6fill|stroke', '.SVGplot.l6dot|stroke', 'text.SVGplot.l6|fill', 'text.SVGplot.l6fill|fill', 'text.SVGplot.l6dot|fill'], val: null },
+    'SVGplot.l7': { type: 'colorPicker', pattern: ['.SVGplot.l7|stroke', '.SVGplot.l7fill|stroke', '.SVGplot.l7dot|stroke', 'text.SVGplot.l7|fill', 'text.SVGplot.l7fill|fill', 'text.SVGplot.l7dot|fill'], val: null },
+    'SVGplot.l8': { type: 'colorPicker', pattern: ['.SVGplot.l8|stroke', '.SVGplot.l8fill|stroke', '.SVGplot.l8dot|stroke', 'text.SVGplot.l8|fill', 'text.SVGplot.l8fill|fill', 'text.SVGplot.l8dot|fill'], val: null },
+}
