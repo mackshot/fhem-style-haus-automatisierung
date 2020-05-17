@@ -1,8 +1,8 @@
+var HA_themeVersion = '3.0b1';
+
 jQuery(document).ready(function ($) {
     HAM_loadCustomCss();
     HAM_editCustomCss();
-
-    var themeVersion = '3.0b1';
 
     // attr WEB hiddenroom input -> Ansicht anpassen
     if ($('#hdr .maininput').length == 0) {
@@ -43,7 +43,7 @@ jQuery(document).ready(function ($) {
     }
 
     // Add version to logo
-    $('#logo').append($('<span class="theme-version">' + themeVersion + '</span>'));
+    $('#logo').append($('<span class="theme-version">' + HA_themeVersion + '</span>'));
 
     // Add clock
     $('#logo').append($('<span id="clock"></span>'));
@@ -68,10 +68,7 @@ jQuery(document).ready(function ($) {
     // Links in der Navigation hinzufügen
     var navElement = jQuery('#menu .room').last().find('tbody');
     navElement.append(
-        $('<tr><td><div><a class="custom-menu-entry" href="https://github.com/klein0r/fhem-style-haus-automatisierung/issues/">Theme-Fehler melden (v' + themeVersion + ')</a></div></td></tr>')
-    );
-    navElement.append(
-        $('<tr><td><div><a class="custom-menu-entry" href="https://github.com/mackshot/fhem-style-haus-automatisierung/issues/">Beta-Theme-Fehler melden (v' + themeVersion + ')</a></div></td></tr>')
+        $('<tr><td><div><a class="custom-menu-entry" href="https://github.com/mackshot/fhem-style-haus-automatisierung/issues/">Beta-Theme-Fehler melden (v' + HA_themeVersion + ')</a></div></td></tr>')
     );
 
     // Automatische Breite für HDR Input
@@ -308,7 +305,8 @@ function HA_getClock() {
 var HAM_Web = $("body").attr("data-webname");
 var HAM_cssId = 'HAM_css_custom';
 var HAM_sassLoaded = false;
-var HAM_lsKey = 'hausautomatisierung_com-mackshot.custom.css';
+var HAM_lsKeyCss = 'hausautomatisierung_com-mackshot.custom.css';
+var HAM_lsKeyThemeVersion = 'hausautomatisierung_com-mackshot.version';
 var HAM_customRulesReading = "HAM_customRules";
 function HAM_updateSass() {
     var compile = function() {
@@ -321,11 +319,12 @@ function HAM_updateSass() {
                 if (cssElement != null) {
                     if (result.text === undefined) {
                         cssElement.innerText = '';    
-                        localStorage.setItem(HAM_lsKey, '');
+                        localStorage.setItem(HAM_lsKeyCss, '');
                     } else {
                         cssElement.innerText = result.text;
-                        localStorage.setItem(HAM_lsKey, result.text);
+                        localStorage.setItem(HAM_lsKeyCss, result.text);
                     }
+                    localStorage.setItem(HAM_lsKeyThemeVersion, HA_themeVersion);
                 }
             });
         });
@@ -355,15 +354,26 @@ function HAM_editCustomCss() {
         block.append('<table class="editStyle block list wide"><tbody></tbody></table>');
 
         HAM_loadCustomRules(function(customRules) {
+            var updateRules = false;
             var table = $("table.editStyle>tbody");
             var cc = 0;
-            for (var i in customRules) {
+            table.append('<tr class="odd"><td>Description</td><td>Setting</td><td>Theme Default Setting</td></tr>');
+            for (var i in HAM_customRulesObj) {
                 var c = HAM_customRulesObj[i];
                 var customRule = customRules[i];
+                if (customRule == undefined) {
+                    updateRules = true;
+                    customRule = { val: null };
+                    customRules[i] = customRule;
+                }
                 var rowClass = (cc++ % 2 == 0 ? "even" : "odd");
                 if (c.type == 'colorPicker') {
-                    table.append('<tr item="' + i + '" class="' + i.replace(".", "__") + ' ' + rowClass + '"><td><div>' + i + '</div></td><td><input class="val" type="color" value="' + customRule.val + '" style="width: 100px;" ' + (customRule.val == null ? 'disabled="disabled"' : '') + '></td><td><input type="checkbox" value="1" ' + (customRule.val == null ? 'checked="checked"' : '') + '>Standard</td></tr>');
+                    table.append('<tr item="' + i + '" class="' + i.replace(".", "__") + ' ' + rowClass + '"><td><div>' + i + '</div></td><td><input class="val" type="color" value="' + customRule.val + '" style="width: 100px;" ' + (customRule.val == null ? 'disabled="disabled"' : '') + '></td><td><input type="checkbox" value="1" ' + (customRule.val == null ? 'checked="checked"' : '') + '></td></tr>');
                 }
+            }
+
+            if (updateRules) {
+                HAM_saveCustomRules(customRules);
             }
         });
 
@@ -395,10 +405,11 @@ function HAM_loadCustomCss() {
     if (exists != null) {
         document.removeChild(exists);
     }
-    var cssContent = localStorage.getItem(HAM_lsKey);
+    var themeVersion = localStorage.getItem(HAM_lsKeyThemeVersion);
+    var cssContent = localStorage.getItem(HAM_lsKeyCss);
     var cssTag = document.createElement("style");
     cssTag.id = HAM_cssId;
-    if (cssContent != null) {
+    if (cssContent != null && themeVersion == HA_themeVersion) {
         cssTag.innerText = cssContent;
     } else {
         HAM_updateSass();
@@ -432,12 +443,12 @@ function HAM_saveCustomRules(obj) {
 }
 
 function HAM_transformCustomRulesToSCss(obj) {
-    var string = '';
+    var string = '@mixin fill-rgba($color, $opacity: 0.3) { fill: rgba($color, $opacity); }';
     for (var i in obj) {
         if (obj[i].val != null) {
+            string += "\n" + HAM_customRulesObj[i].variable + ": " + obj[i].val + ";";
             for (var j in HAM_customRulesObj[i].pattern) {
-                var p = HAM_customRulesObj[i].pattern[j].split("|");
-                string += "\n" + p[0] + " { " + p[1] + ": " + obj[i].val + " !important; }";
+                string += "\n" + HAM_customRulesObj[i].pattern[j];
             }
         }
     }
@@ -445,13 +456,88 @@ function HAM_transformCustomRulesToSCss(obj) {
 }
 
 var HAM_customRulesObj = {
-    'SVGplot.l0': { type: 'colorPicker', pattern: ['.SVGplot.l0|stroke', '.SVGplot.l0fill|stroke', '.SVGplot.l0dot|stroke', '.SVGplot.l0fill_stripe|stroke', '.SVGplot.l0fill_gyr|stroke', 'text.SVGplot.l0|fill', 'text.SVGplot.l0fill|fill', 'text.SVGplot.l0dot|fill', 'text.SVGplot.l0fill_stripe|fill', 'text.SVGplot.l0fill_gyr|fill'], val: null },
-    'SVGplot.l1': { type: 'colorPicker', pattern: ['.SVGplot.l1|stroke', '.SVGplot.l1fill|stroke', '.SVGplot.l1dot|stroke', '.SVGplot.l1fill_stripe|stroke', 'text.SVGplot.l1|fill', 'text.SVGplot.l1fill|fill', 'text.SVGplot.l1dot|fill', 'text.SVGplot.l1fill_stripe|fill'], val: null },
-    'SVGplot.l2': { type: 'colorPicker', pattern: ['.SVGplot.l2|stroke', '.SVGplot.l2fill|stroke', '.SVGplot.l2dot|stroke', 'text.SVGplot.l2|fill', 'text.SVGplot.l2fill|fill', 'text.SVGplot.l2dot|fill'], val: null },
-    'SVGplot.l3': { type: 'colorPicker', pattern: ['.SVGplot.l3|stroke', '.SVGplot.l3fill|stroke', '.SVGplot.l3dot|stroke', 'text.SVGplot.l3|fill', 'text.SVGplot.l3fill|fill', 'text.SVGplot.l3dot|fill'], val: null },
-    'SVGplot.l4': { type: 'colorPicker', pattern: ['.SVGplot.l4|stroke', '.SVGplot.l4fill|stroke', '.SVGplot.l4dot|stroke', 'text.SVGplot.l4|fill', 'text.SVGplot.l4fill|fill', 'text.SVGplot.l4dot|fill'], val: null },
-    'SVGplot.l5': { type: 'colorPicker', pattern: ['.SVGplot.l5|stroke', '.SVGplot.l5fill|stroke', '.SVGplot.l5dot|stroke', 'text.SVGplot.l5|fill', 'text.SVGplot.l5fill|fill', 'text.SVGplot.l5dot|fill'], val: null },
-    'SVGplot.l6': { type: 'colorPicker', pattern: ['.SVGplot.l6|stroke', '.SVGplot.l6fill|stroke', '.SVGplot.l6dot|stroke', 'text.SVGplot.l6|fill', 'text.SVGplot.l6fill|fill', 'text.SVGplot.l6dot|fill'], val: null },
-    'SVGplot.l7': { type: 'colorPicker', pattern: ['.SVGplot.l7|stroke', '.SVGplot.l7fill|stroke', '.SVGplot.l7dot|stroke', 'text.SVGplot.l7|fill', 'text.SVGplot.l7fill|fill', 'text.SVGplot.l7dot|fill'], val: null },
-    'SVGplot.l8': { type: 'colorPicker', pattern: ['.SVGplot.l8|stroke', '.SVGplot.l8fill|stroke', '.SVGplot.l8dot|stroke', 'text.SVGplot.l8|fill', 'text.SVGplot.l8fill|fill', 'text.SVGplot.l8dot|fill'], val: null },
+    'SVGplot.l0': { type: 'colorPicker', pattern: [
+        '.SVGplot.l0 { stroke: $SVGplot__l0 !important; }',
+        '.SVGplot.l0fill { stroke: $SVGplot__l0 !important; @include fill-rgba($SVGplot__l0); }',
+        '.SVGplot.l0dot { stroke: $SVGplot__l0 !important; }',
+        '.SVGplot.l0fill_stripe { stroke: $SVGplot__l0 !important; }',
+        '.SVGplot.l0fill_gyr { stroke: $SVGplot__l0 !important; }',
+        'text.SVGplot.l0 { fill: $SVGplot__l0 !important; stroke: none !important; }',
+        'text.SVGplot.l0fill { fill: $SVGplot__l0 !important; stroke: none !important; }',
+        'text.SVGplot.l0dot { fill: $SVGplot__l0 !important; stroke: none !important; }',
+        'text.SVGplot.l0fill_stripe { fill: $SVGplot__l0 !important; stroke: none !important; }',
+        'text.SVGplot.l0fill_gyr { fill: $SVGplot__l0 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l0', val: null },
+    'SVGplot.l1': { type: 'colorPicker', pattern: [
+        '.SVGplot.l1{ stroke: $SVGplot__l1 !important; }',
+        '.SVGplot.l1fill { stroke: $SVGplot__l1 !important; @include fill-rgba($SVGplot__l1); }',
+        '.SVGplot.l1dot { stroke: $SVGplot__l1 !important; }',
+        '.SVGplot.l1fill_stripe { stroke: $SVGplot__l1 !important; }',
+        'text.SVGplot.l1 { fill: $SVGplot__l1 !important; stroke: none !important; }',
+        'text.SVGplot.l1fill { fill: $SVGplot__l1 !important; stroke: none !important; }',
+        'text.SVGplot.l1dot { fill: $SVGplot__l1 !important; stroke: none !important; }',
+        'text.SVGplot.l1fill_stripe { fill: $SVGplot__l1 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l1', val: null },
+    'SVGplot.l2': { type: 'colorPicker', pattern: [
+        '.SVGplot.l2 { stroke: $SVGplot__l2 !important; }',
+        '.SVGplot.l2fill { stroke: $SVGplot__l2 !important; @include fill-rgba($SVGplot__l2); }',
+        '.SVGplot.l2dot { stroke: $SVGplot__l2 !important; }',
+        'text.SVGplot.l2 { fill: $SVGplot__l2 !important; stroke: none !important; }',
+        'text.SVGplot.l2fill { fill: $SVGplot__l2 !important; stroke: none !important; }',
+        'text.SVGplot.l2dot { fill: $SVGplot__l2 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l2', val: null },
+    'SVGplot.l3': { type: 'colorPicker', pattern: [
+        '.SVGplot.l3 { stroke: $SVGplot__l3 !important; }',
+        '.SVGplot.l3fill { stroke: $SVGplot__l3 !important; @include fill-rgba($SVGplot__l3); }',
+        '.SVGplot.l3dot { stroke: $SVGplot__l3 !important; }',
+        'text.SVGplot.l3 { fill: $SVGplot__l3 !important; stroke: none !important; }',
+        'text.SVGplot.l3fill { fill: $SVGplot__l3 !important; stroke: none !important; }',
+        'text.SVGplot.l3dot { fill: $SVGplot__l3 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l3', val: null },
+    'SVGplot.l4': { type: 'colorPicker', pattern: [
+        '.SVGplot.l4 { stroke: $SVGplot__l4 !important; }',
+        '.SVGplot.l4fill { stroke: $SVGplot__l4 !important; @include fill-rgba($SVGplot__l4); }',
+        '.SVGplot.l4dot { stroke: $SVGplot__l4 !important; }',
+        'text.SVGplot.l4 { fill: $SVGplot__l4 !important; stroke: none !important; }',
+        'text.SVGplot.l4fill { fill: $SVGplot__l4 !important; stroke: none !important; }',
+        'text.SVGplot.l4dot { fill: $SVGplot__l4 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l4', val: null },
+    'SVGplot.l5': { type: 'colorPicker', pattern: [
+        '.SVGplot.l5 { stroke: $SVGplot__l5 !important; }',
+        '.SVGplot.l5fill { stroke: $SVGplot__l5 !important; @include fill-rgba($SVGplot__l5); }',
+        '.SVGplot.l5dot { stroke: $SVGplot__l5 !important; }',
+        'text.SVGplot.l5 { fill: $SVGplot__l5 !important; stroke: none !important; }',
+        'text.SVGplot.l5fill { fill: $SVGplot__l5 !important; stroke: none !important; }',
+        'text.SVGplot.l5dot { fill: $SVGplot__l5 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l5', val: null },
+    'SVGplot.l6': { type: 'colorPicker', pattern: [
+        '.SVGplot.l6 { stroke: $SVGplot__l6 !important; }',
+        '.SVGplot.l6fill { stroke: $SVGplot__l6 !important; @include fill-rgba($SVGplot__l6); }',
+        '.SVGplot.l6dot { stroke: $SVGplot__l6 !important; }',
+        'text.SVGplot.l6 { fill: $SVGplot__l6 !important; stroke: none !important; }',
+        'text.SVGplot.l6fill { fill: $SVGplot__l6 !important; stroke: none !important; }',
+        'text.SVGplot.l6dot { fill: $SVGplot__l6 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l6', val: null },
+    'SVGplot.l7': { type: 'colorPicker', pattern: [
+        '.SVGplot.l7 { stroke: $SVGplot__l7 !important; }',
+        '.SVGplot.l7fill { stroke: $SVGplot__l7 !important; @include fill-rgba($SVGplot__l7); }',
+        '.SVGplot.l7dot { stroke: $SVGplot__l7 !important; }',
+        'text.SVGplot.l7 { fill: $SVGplot__l7 !important; stroke: none !important; }',
+        'text.SVGplot.l7fill { fill: $SVGplot__l7 !important; stroke: none !important; }',
+        'text.SVGplot.l7dot { fill: $SVGplot__l7 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l7', val: null },
+    'SVGplot.l8': { type: 'colorPicker', pattern: [
+        '.SVGplot.l8 { stroke: $SVGplot__l8 !important; }',
+        '.SVGplot.l8fill { stroke: $SVGplot__l8 !important; @include fill-rgba($SVGplot__l8); }',
+        '.SVGplot.l8dot { stroke: $SVGplot__l8 !important; }',
+        'text.SVGplot.l8 { fill: $SVGplot__l8 !important; stroke: none !important; }',
+        'text.SVGplot.l8fill { fill: $SVGplot__l8 !important; stroke: none !important; }',
+        'text.SVGplot.l8dot { fill: $SVGplot__l8 !important; stroke: none !important; }'
+    ], variable: '$SVGplot__l8', val: null },
+    'svg.border': { type: 'colorPicker', pattern: [
+        'svg .border { stroke: $svg__border !important; }'
+    ], variable: '$svg__border', val: null },
+    'svg.background': { type: 'colorPicker', pattern: [
+        'svg .border { fill: $svg__background !important; }'
+    ], variable: '$svg__background', val: null },
 }
