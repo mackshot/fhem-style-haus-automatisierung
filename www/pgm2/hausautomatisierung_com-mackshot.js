@@ -307,10 +307,11 @@ var HAM_cssId = 'HAM_css_custom';
 var HAM_sassLoaded = false;
 var HAM_lsKeyCss = 'hausautomatisierung_com-mackshot.custom.css';
 var HAM_lsKeyThemeVersion = 'hausautomatisierung_com-mackshot.version';
+var HAM_lsKeyRulesTime = 'hausautomatisierung_com-mackshot.rules.time';
 var HAM_customRulesReading = "HAM_customRules";
 function HAM_updateSass() {
     var compile = function() {
-        HAM_loadCustomRules(function (rules) {
+        HAM_loadCustomRules(function (rules, timestamp) {
             var sass = new Sass();
             var scss = HAM_transformCustomRulesToSCss(rules);
             sass.compile(scss, function(result) {
@@ -325,6 +326,7 @@ function HAM_updateSass() {
                         localStorage.setItem(HAM_lsKeyCss, result.text);
                     }
                     localStorage.setItem(HAM_lsKeyThemeVersion, HA_themeVersion);
+                    localStorage.setItem(HAM_lsKeyRulesTime, timestamp);
                 }
             });
         });
@@ -353,7 +355,7 @@ function HAM_editCustomCss() {
         block.append('<div class="fileList">Edit Style</div>');
         block.append('<table class="editStyle block list wide"><tbody></tbody></table>');
 
-        HAM_loadCustomRules(function(customRules) {
+        HAM_loadCustomRules(function(customRules, timestamp) {
             var updateRules = false;
             var table = $("table.editStyle>tbody");
             var cc = 0;
@@ -384,7 +386,7 @@ function HAM_editCustomCss() {
 function HAM_setCustomCss(key) {
     if ($("table.editStyle tr." + key.replace(".", "__") + " input[type=checkbox]:checked").length == 1) {
         $("table.editStyle tr." + key.replace(".", "__") + " input[type!=checkbox]").prop('disabled', true);
-        HAM_loadCustomRules(function(customRules) {
+        HAM_loadCustomRules(function(customRules, timestamp) {
             customRules[key].val = null;
             HAM_saveCustomRules(customRules);
             HAM_updateSass();
@@ -392,7 +394,7 @@ function HAM_setCustomCss(key) {
     } else {
         $("table.editStyle tr." + key.replace(".", "__") + " input[type!=checkbox]").prop('disabled', false);
         var val = $("table.editStyle tr." + key.replace(".", "__") + " input.val").val();
-        HAM_loadCustomRules(function(customRules) {
+        HAM_loadCustomRules(function(customRules, timestamp) {
             customRules[key].val = val;
             HAM_saveCustomRules(customRules);
             HAM_updateSass();
@@ -409,7 +411,14 @@ function HAM_loadCustomCss() {
     var cssContent = localStorage.getItem(HAM_lsKeyCss);
     var cssTag = document.createElement("style");
     cssTag.id = HAM_cssId;
+
     if (cssContent != null && themeVersion == HA_themeVersion) {
+        HAM_loadCustomRules(function(rules, timestamp) {
+            if (timestamp > localStorage.getItem(HAM_lsKeyRulesTime)) {
+                HAM_updateSass();
+            }
+        });
+    
         cssTag.innerText = cssContent;
     } else {
         HAM_updateSass();
@@ -418,28 +427,33 @@ function HAM_loadCustomCss() {
 }
 
 function HAM_loadCustomRules(action) {
+    HAM_getCustomRules(action, true);
+}
+
+function HAM_getCustomRules(action, save) {
     FW_cmd(FW_root + '?cmd=jsonlist2 ' + $("body").attr("data-webname") + " " + HAM_customRulesReading + "&XHR=1", function(a) {
         var j = JSON.parse(a);
         var readings = j.Results[0].Readings;
 
         var customRules = {};
+        var customRulesTimestamp = 0;
         if (readings[HAM_customRulesReading] != undefined) {
             customRules = JSON.parse(atob(readings[HAM_customRulesReading].Value));
+            customRulesTimestamp = Date.parse(readings[HAM_customRulesReading].Time);
         } else {
             for (var i in HAM_customRulesObj) {
                 customRules[i] = { val: null };
             }
 
-            HAM_saveCustomRules(customRules);
+            if (save)
+                HAM_saveCustomRules(customRules);
         }
-        action(customRules);
-    })
+        action(customRules, customRulesTimestamp);
+    });
 }
 
 function HAM_saveCustomRules(obj) {
-    FW_cmd(FW_root + '?cmd=setreading ' + $("body").attr("data-webname") + " " + HAM_customRulesReading + " " + btoa(JSON.stringify(obj)) + "&XHR=1", function(a) {
-        console.log(a);
-    })
+    FW_cmd(FW_root + '?cmd=setreading ' + $("body").attr("data-webname") + " " + HAM_customRulesReading + " " + btoa(JSON.stringify(obj)) + "&XHR=1", function(a) { console.log(a); });
 }
 
 function HAM_transformCustomRulesToSCss(obj) {
